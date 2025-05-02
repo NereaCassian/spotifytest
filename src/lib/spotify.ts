@@ -107,10 +107,17 @@ export const setRefreshToken = (token: string) => {
   refreshToken = token;
 };
 
+// Edge-compatible base64 encoding function
+const encodeBase64 = (str: string): string => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(str);
+  return btoa(String.fromCharCode(...new Uint8Array(data.buffer)));
+};
+
 // Implementación basada en fetch para refrescar el token de acceso
 export const getAccessToken = async (refToken: string) => {
   try {
-    const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    const basicAuth = encodeBase64(`${clientId}:${clientSecret}`);
     
     const response = await fetch('https://accounts.spotify.com/api/token', {
       method: 'POST',

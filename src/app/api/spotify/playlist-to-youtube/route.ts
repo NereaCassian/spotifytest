@@ -1,7 +1,6 @@
 import { getPlaylistTracks } from "@/lib/spotify";
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/auth";
+import { auth } from "@/auth";
 import { CloudflareKV, savePlaylistConversion } from "@/lib/cloudflare";
 
 interface PlaylistRequestBody {
@@ -11,7 +10,7 @@ interface PlaylistRequestBody {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session || !session.accessToken) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }

@@ -1,16 +1,23 @@
-import { NextAuthOptions } from "next-auth";
+import NextAuth from "next-auth";
 import SpotifyProvider from "next-auth/providers/spotify";
 import { LOGIN_URL } from "@/lib/spotify";
 import { CloudflareKV, saveUserData } from "@/lib/cloudflare";
+import { refreshAccessToken } from "@/lib/edge-auth";
 
-export const authOptions: NextAuthOptions = {
+export const { 
+  handlers, 
+  auth, 
+  signIn, 
+  signOut 
+} = NextAuth({
   providers: [
     SpotifyProvider({
-      clientId: process.env.SPOTIFY_CLIENT_ID as string,
-      clientSecret: process.env.SPOTIFY_CLIENT_SECRET as string,
+      clientId: process.env.SPOTIFY_CLIENT_ID,
+      clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
       authorization: LOGIN_URL,
     }),
   ],
+  session: { strategy: "jwt" },
   secret: process.env.NEXTAUTH_SECRET,
   pages: {
     signIn: "/login",
@@ -29,7 +36,7 @@ export const authOptions: NextAuthOptions = {
           const env = (process.env as any).CF as CloudflareKV;
           if (env?.SPOTIFY_USERS) {
             await saveUserData(env, {
-              userId: user.id,
+              userId: user.id || '',
               refreshToken: account.refresh_token as string,
               name: user.name as string,
               email: user.email as string,
@@ -48,16 +55,37 @@ export const authOptions: NextAuthOptions = {
       }
 
       // Access token has expired, try to update it
-      // For this API route, we'll need to implement token refresh in the client
-      // since we're using the Edge runtime
+      if (token.refreshToken) {
+        try {
+          const refreshedToken = await refreshAccessToken(
+            token.refreshToken as string,
+            process.env.SPOTIFY_CLIENT_ID as string,
+            process.env.SPOTIFY_CLIENT_SECRET as string
+          );
+          
+          token.accessToken = refreshedToken.access_token;
+          token.accessTokenExpires = Date.now() + refreshedToken.expires_in * 1000;
+          
+          // Update the refresh token if a new one is returned
+          if (refreshedToken.refresh_token) {
+            token.refreshToken = refreshedToken.refresh_token;
+          }
+        } catch (error) {
+          console.error("Error refreshing access token", error);
+          token.error = "RefreshAccessTokenError";
+        }
+      }
+      
       return token;
     },
     async session({ session, token }) {
-      session.user = token.user as any;
-      session.accessToken = token.accessToken as string;
-      session.error = token.error as string;
+      if (token) {
+        session.user = token.user as any;
+        session.accessToken = token.accessToken as string;
+        session.error = token.error as string;
+      }
       
       return session;
     },
   },
-}; 
+}); 

@@ -1,8 +1,4 @@
-import NextAuth from "next-auth/next";
-import { authOptions } from "./auth";
+import { handlers } from "@/auth";
 
-// Crear una instancia del handler usando la configuración
-const handler = NextAuth(authOptions);
-
-// Exportar solo los métodos GET y POST
-export { handler as GET, handler as POST }; 
+// Export the GET and POST handlers from the auth configuration
+export const { GET, POST } = handlers; 
