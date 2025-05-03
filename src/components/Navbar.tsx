@@ -1,9 +1,10 @@
 'use client';
 
-import { useSession, signIn, signOut } from 'next-auth/react';
+import { useSession} from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
+import { signInToSpotify, signOutToSpotify } from '@/lib/actions';
 
 export default function Navbar() {
   const { data: session } = useSession();
@@ -66,7 +67,7 @@ export default function Navbar() {
                 <span className="text-sm">{session.user?.name}</span>
                 <button
                   className="px-3 py-1.5 rounded-md bg-gray-200 dark:bg-gray-700 text-sm"
-                  onClick={() => signOut()}
+                  onClick={() => signOutToSpotify()}
                 >
                   Logout
                 </button>
@@ -74,7 +75,7 @@ export default function Navbar() {
             ) : (
               <button
                 className="px-4 py-2 rounded-md bg-green-500 text-white hover:bg-green-600 text-sm font-medium"
-                onClick={() => signIn('spotify')}
+                onClick={() => signInToSpotify() }
               >
                 Login with Spotify
               </button>
@@ -119,13 +120,6 @@ export default function Navbar() {
             Profile
           </Link>
           <Link
-            href="/playlists"
-            className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            Playlists
-          </Link>
-          <Link
             href="/recommendations"
             className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
             onClick={() => setIsMenuOpen(false)}
@@ -156,7 +150,7 @@ export default function Navbar() {
               <div className="mt-3">
                 <button
                   className="mt-3 w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700"
-                  onClick={() => signOut()}
+                  onClick={() => signOutToSpotify()}
                 >
                   Logout
                 </button>
@@ -166,7 +160,7 @@ export default function Navbar() {
             <div className="px-4 py-3">
               <button
                 className="w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-500 hover:bg-green-600"
-                onClick={() => signIn('spotify')}
+                onClick={() => signInToSpotify()}
               >
                 Login with Spotify
               </button>

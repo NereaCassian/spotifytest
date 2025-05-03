@@ -22,7 +22,5 @@
 	],
 	"vars": {
 		"SPOTIFY_CLIENT_ID": "7c693a7c4feb4ce9b951f059bee7be43",
-		"AUTH_TRUST_HOST": "true",
-		"AUTH_SECRET": "${AUTH_SECRET}"
 	}
 }
