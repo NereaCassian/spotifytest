@@ -1,6 +1,8 @@
 import { getTopArtists, getSpotifyToken } from "@/lib/spotify";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from '@clerk/nextjs/server'
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+
 export async function GET(request: NextRequest) {
   try {
     const { userId} = await auth()
@@ -18,15 +20,20 @@ export async function GET(request: NextRequest) {
 
     const topArtists = await getTopArtists(token, validTimeRange, limit);
     
-    return NextResponse.json({
-      artists: topArtists.map((artist: any) => ({
-        id: artist.id,
-        name: artist.name,
-        genres: artist.genres,
-        popularity: artist.popularity,
-        imageUrl: artist.images?.[0]?.url || null,
-      })),
-    });
+    const artists = topArtists.map((artist: any) => ({
+      id: artist.id,
+      name: artist.name,
+      genres: artist.genres,
+      popularity: artist.popularity,
+      imageUrl: artist.images?.[0]?.url || null,
+    }));
+    
+    // Store in KV
+    const { env } = getCloudflareContext();
+    const key = `user:${userId}:top-artists:${validTimeRange}:${limit}`;
+    await env.playlister.put(key, JSON.stringify(artists), { expirationTtl: 3600 }); // Cache for 1 hour
+    
+    return NextResponse.json({ artists });
   } catch (error) {
     console.error("Error fetching top artists:", error);
     return NextResponse.json(

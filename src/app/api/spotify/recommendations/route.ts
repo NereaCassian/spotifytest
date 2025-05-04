@@ -2,6 +2,7 @@ import { getTopArtists, getTopTracks, searchSpotifyArtists, searchSpotifyAlbums,
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { auth } from "@clerk/nextjs/server";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 // Initialize Google Generative AI with API key
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || "");
@@ -103,6 +104,11 @@ export async function GET(request: NextRequest) {
         genres: uniqueGenres,
       }
     };
+    
+    // Store in KV
+    const { env } = getCloudflareContext();
+    const key = `user:${userId}:recommendations`;
+    await env.playlister.put(key, JSON.stringify(results), { expirationTtl: 86400 }); // Cache for 24 hours
       
     return NextResponse.json(results);
   } catch (error) {
