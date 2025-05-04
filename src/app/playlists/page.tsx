@@ -1,13 +1,13 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
-import { useState } from 'react';
 import PlaylistConverter from '@/components/PlaylistConverter';
+import { useAuth, useUser} from '@clerk/nextjs';
 
 export default function PlaylistsPage() {
-  const { data: session, status } = useSession();
+  const { isSignedIn, isLoaded } = useAuth()
+  const { user } = useUser()
 
-  if (status === 'loading') {
+  if (!isLoaded) {
     return (
       <div className="flex items-center justify-center min-h-[70vh]">
         <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-green-500"></div>
@@ -34,7 +34,7 @@ export default function PlaylistsPage() {
           <ol className="ml-6 mt-2 list-decimal text-sm">
             <li className="mb-1">Select a playlist from your Spotify library</li>
             <li className="mb-1">We'll convert the tracks and generate a special link</li>
-            <li className="mb-1">Share this link with anyone who wants to import your playlist to YouTube Music</li>
+            <li className="mb-1">Share this link with anyone who wants to import your playlist to YouTube</li>
             <li>When they open the link, they'll see instructions for importing to YouTube</li>
           </ol>
         </div>

@@ -1,41 +1,64 @@
 'use client';
 
 import { useState } from 'react';
-import { useSession } from 'next-auth/react';
 import Image from 'next/image';
-
-interface Playlist {
-  id: string;
-  name: string;
-  images: { url: string }[];
-  tracks: { total: number };
-}
+import { SignInButton, SignOutButton, useAuth, useUser} from '@clerk/nextjs';
+import { spotifyApi } from '@/lib/apiClient';
+import { Playlist } from '@/types/spotify';
 
 interface ConversionResult {
   youtubeImportUrl: string;
   trackCount: number;
 }
 
+// Response from the API
+interface PlaylistApiResponse {
+  playlists: {
+    id: string;
+    name: string;
+    description: string;
+    images: { url: string }[];
+    imageUrl: string | null;
+    tracks: { total: number };
+    uri: string;
+    external_urls: { spotify: string };
+  }[];
+  error?: string;
+}
+
+// Local interface for playlist data
+interface PlaylistWithDetails {
+  id: string;
+  name: string;
+  images: { url: string }[];
+  imageUrl: string | null;
+  tracks: { total: number };
+}
+
 export default function PlaylistConverter() {
-  const { data: session } = useSession();
-  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const { isSignedIn } = useAuth()
+  const { user } = useUser()
+  const [playlists, setPlaylists] = useState<PlaylistWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
+  const [selectedPlaylist, setSelectedPlaylist] = useState<PlaylistWithDetails | null>(null);
   const [conversionResult, setConversionResult] = useState<ConversionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchPlaylists = async () => {
-    if (!session?.accessToken) return;
+    if (!isSignedIn) return;
     
     try {
       setIsLoading(true);
       setError(null);
       
       const response = await fetch('/api/spotify/playlists');
-      const data = await response.json() as { playlists?: Playlist[]; error?: string };
+      const data = await response.json() as PlaylistApiResponse;
       
-      if (data.error) throw new Error(data.error);
-      setPlaylists(data.playlists || []);
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load playlists');
+      }
+      
+      setPlaylists(data.playlists);
     } catch (err) {
       setError('Failed to load playlists');
       console.error(err);
@@ -45,37 +68,18 @@ export default function PlaylistConverter() {
   };
 
   const convertPlaylist = async () => {
-    if (!selectedPlaylist || !session?.accessToken) return;
+    if (!selectedPlaylist) return;
     
     try {
       setIsLoading(true);
       setError(null);
       
-      const response = await fetch('/api/spotify/playlist-to-youtube', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          spotifyPlaylistId: selectedPlaylist.id,
-          playlistName: selectedPlaylist.name,
-        }),
-      });
+      const result = await spotifyApi.convertPlaylistToYoutube(
+        selectedPlaylist.id,
+        selectedPlaylist.name
+      );
       
-      const data = await response.json() as { 
-        youtubeImportUrl?: string; 
-        trackCount?: number; 
-        error?: string 
-      };
-      
-      if (data.error) throw new Error(data.error);
-      
-      if (data.youtubeImportUrl && data.trackCount) {
-        setConversionResult({
-          youtubeImportUrl: data.youtubeImportUrl,
-          trackCount: data.trackCount,
-        });
-      } else {
-        throw new Error('Invalid response format');
-      }
+      setConversionResult(result);
     } catch (err) {
       setError('Failed to convert playlist');
       console.error(err);
@@ -88,7 +92,7 @@ export default function PlaylistConverter() {
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <h2 className="text-2xl font-bold mb-6">Convert Spotify to YouTube</h2>
       
-      {!session ? (
+      {!isSignedIn ? (
         <p className="text-center py-5">Please login to convert playlists</p>
       ) : (
         <>
@@ -127,9 +131,9 @@ export default function PlaylistConverter() {
                   >
                     <div className="flex items-center">
                       <div className="w-12 h-12 relative mr-3">
-                        {playlist.images[0] ? (
+                        {(playlist.imageUrl || (playlist.images && playlist.images[0])) ? (
                           <Image
-                            src={playlist.images[0].url}
+                            src={playlist.imageUrl || playlist.images[0].url}
                             alt={playlist.name}
                             fill
                             className="object-cover rounded"

@@ -1,13 +1,15 @@
-import { getTopTracks } from "@/lib/spotify";
+import { getTopTracks, getSpotifyToken } from "@/lib/spotify";
+import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session || !session.accessToken) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    const { userId } = await auth()
+    if (!userId) {
+      return new Response('Unauthorized', { status: 401 })
     }
+    const token = await getSpotifyToken(userId);
 
     const { searchParams } = new URL(request.url);
     const timeRange = searchParams.get("time_range") || "medium_term";
@@ -17,7 +19,7 @@ export async function GET(request: NextRequest) {
       ? timeRange 
       : 'medium_term';
 
-    const topTracks = await getTopTracks(session.accessToken, validTimeRange, limit);
+    const topTracks = await getTopTracks(token, validTimeRange, limit);
     
     return NextResponse.json({
       tracks: topTracks.map((track: any) => ({

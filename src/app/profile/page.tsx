@@ -1,61 +1,40 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
+import { useAuth, useUser } from '@clerk/nextjs';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import StatsGrid from '@/components/StatsGrid';
 import TrackCard from '@/components/TrackCard';
 import ArtistCard from '@/components/ArtistCard';
+import { spotifyApi } from '@/lib/apiClient';
+import { Artist, Track, TimeRange } from '@/types/spotify';
 
-const TIME_RANGE_OPTIONS = [
+const TIME_RANGE_OPTIONS: { value: TimeRange; label: string }[] = [
   { value: 'short_term', label: 'Last 4 Weeks' },
   { value: 'medium_term', label: 'Last 6 Months' },
   { value: 'long_term', label: 'All Time' },
 ];
 
-// Definir interfaces para los tipos
-interface Track {
-  id: string;
-  name: string;
-  artist: string;
-  album: string;
-  imageUrl: string | null;
-  popularity?: number;
-  spotifyUrl: string;
-  previewUrl?: string | null;
-  playedAt?: string;
-}
-
-interface Artist {
-  id: string;
-  name: string;
-  genres: string[];
-  imageUrl: string | null;
-  popularity: number;
-}
-
 export default function ProfilePage() {
-  const { data: session, status } = useSession();
+  const { isSignedIn, isLoaded } = useAuth();
+  const { user } = useUser();
   const [topTracks, setTopTracks] = useState<Track[]>([]);
   const [topArtists, setTopArtists] = useState<Artist[]>([]);
   const [recentlyPlayed, setRecentlyPlayed] = useState<Track[]>([]);
-  const [timeRange, setTimeRange] = useState('medium_term');
+  const [timeRange, setTimeRange] = useState<TimeRange>('medium_term');
   const [isLoading, setIsLoading] = useState({
     tracks: false,
     artists: false,
     recent: false,
   });
 
-  const fetchTopTracks = async (range: string) => {
-    if (!session?.accessToken) return;
+  const fetchTopTracks = async (range: TimeRange) => {
+    if (!isSignedIn) return;
     
     try {
       setIsLoading(prev => ({ ...prev, tracks: true }));
-      const response = await fetch(`/api/spotify/stats/top-tracks?time_range=${range}`);
-      const data = await response.json() as { tracks: Track[]; error?: string };
-      
-      if (data.error) throw new Error(data.error);
-      setTopTracks(data.tracks);
+      const tracks = await spotifyApi.getTopTracks(range);
+      setTopTracks(tracks);
     } catch (err) {
       console.error('Failed to fetch top tracks:', err);
     } finally {
@@ -63,16 +42,13 @@ export default function ProfilePage() {
     }
   };
 
-  const fetchTopArtists = async (range: string) => {
-    if (!session?.accessToken) return;
+  const fetchTopArtists = async (range: TimeRange) => {
+    if (!isSignedIn) return;
     
     try {
       setIsLoading(prev => ({ ...prev, artists: true }));
-      const response = await fetch(`/api/spotify/stats/top-artists?time_range=${range}`);
-      const data = await response.json() as { artists: Artist[]; error?: string };
-      
-      if (data.error) throw new Error(data.error);
-      setTopArtists(data.artists);
+      const artists = await spotifyApi.getTopArtists(range);
+      setTopArtists(artists);
     } catch (err) {
       console.error('Failed to fetch top artists:', err);
     } finally {
@@ -81,15 +57,12 @@ export default function ProfilePage() {
   };
 
   const fetchRecentlyPlayed = async () => {
-    if (!session?.accessToken) return;
+    if (!isSignedIn) return;
     
     try {
       setIsLoading(prev => ({ ...prev, recent: true }));
-      const response = await fetch('/api/spotify/stats/recently-played');
-      const data = await response.json() as { tracks: Track[]; error?: string };
-      
-      if (data.error) throw new Error(data.error);
-      setRecentlyPlayed(data.tracks);
+      const tracks = await spotifyApi.getRecentlyPlayed();
+      setRecentlyPlayed(tracks);
     } catch (err) {
       console.error('Failed to fetch recently played:', err);
     } finally {
@@ -97,21 +70,21 @@ export default function ProfilePage() {
     }
   };
 
-  const handleTimeRangeChange = (newRange: string) => {
+  const handleTimeRangeChange = (newRange: TimeRange) => {
     setTimeRange(newRange);
     fetchTopTracks(newRange);
     fetchTopArtists(newRange);
   };
 
   useEffect(() => {
-    if (session?.accessToken) {
+    if (isSignedIn) {
       fetchTopTracks(timeRange);
       fetchTopArtists(timeRange);
       fetchRecentlyPlayed();
     }
-  }, [session, timeRange]); // Añadimos timeRange como dependencia
+  }, [isSignedIn, timeRange]);
 
-  if (status === 'loading') {
+  if (!isLoaded) {
     return (
       <div className="flex items-center justify-center min-h-[70vh]">
         <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-green-500"></div>
@@ -119,7 +92,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (!session) {
+  if (!isSignedIn) {
     return (
       <div className="flex flex-col items-center justify-center py-20 min-h-[70vh]">
         <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md max-w-md mx-auto text-center">
@@ -138,21 +111,23 @@ export default function ProfilePage() {
   return (
     <div className="space-y-8">
       {/* User Profile Header */}
-      {session.user && (
+      {user && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex flex-col sm:flex-row items-center sm:items-start gap-6">
-          {session.user.image && (
+          {user.imageUrl && (
             <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden">
               <Image
-                src={session.user.image}
-                alt={session.user.name || "User"}
+                src={user.imageUrl}
+                alt={user.fullName || "User"}
                 fill
                 className="object-cover"
               />
             </div>
           )}
           <div className="text-center sm:text-left">
-            <h1 className="text-3xl font-bold">{session.user.name}</h1>
-            <p className="text-gray-600 dark:text-gray-300">{session.user.email}</p>
+            <h1 className="text-3xl font-bold">{user.fullName}</h1>
+            {user.primaryEmailAddress && (
+              <p className="text-gray-600 dark:text-gray-300">{user.primaryEmailAddress.emailAddress}</p>
+            )}
             <div className="mt-4 flex flex-wrap justify-center sm:justify-start gap-3">
               <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded-full text-sm">
                 Spotify User

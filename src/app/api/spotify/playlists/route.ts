@@ -1,15 +1,16 @@
-import { getUserPlaylists } from "@/lib/spotify";
+import { getSpotifyToken, getUserPlaylists } from "@/lib/spotify";
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth } from '@clerk/nextjs/server'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session || !session.accessToken) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    const { userId } = await auth()
+    if (!userId) {
+      return new Response('Unauthorized', { status: 401 })
     }
-
-    const playlists = await getUserPlaylists(session.accessToken);
+    const token = await getSpotifyToken(userId);
+    
+    const playlists = await getUserPlaylists(token);
     
     return NextResponse.json({
       playlists: playlists.map((playlist: any) => ({
@@ -17,6 +18,7 @@ export async function GET(request: NextRequest) {
         name: playlist.name,
         description: playlist.description,
         images: playlist.images,
+        imageUrl: playlist.images?.[0]?.url || null,
         tracks: playlist.tracks,
         uri: playlist.uri,
         external_urls: playlist.external_urls,

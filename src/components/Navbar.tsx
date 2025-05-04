@@ -1,13 +1,14 @@
 'use client';
 
-import { useSession} from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
-import { signInToSpotify, signOutToSpotify } from '@/lib/actions';
+import { SignInButton, SignOutButton, useAuth, useUser} from '@clerk/nextjs';
+
 
 export default function Navbar() {
-  const { data: session } = useSession();
+  const { isSignedIn } = useAuth()
+  const { user } = useUser()
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const toggleMenu = () => {
@@ -53,32 +54,22 @@ export default function Navbar() {
             </div>
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
-            {session ? (
+            {isSignedIn && user ? (
               <div className="flex items-center space-x-4">
-                {session.user?.image && (
+                {user.imageUrl && (
                   <Image
-                    src={session.user.image}
-                    alt={session.user.name || "User"}
+                    src={user.imageUrl}
+                    alt={user.fullName || "User"}
                     width={32}
                     height={32}
                     className="rounded-full"
                   />
                 )}
-                <span className="text-sm">{session.user?.name}</span>
-                <button
-                  className="px-3 py-1.5 rounded-md bg-gray-200 dark:bg-gray-700 text-sm"
-                  onClick={() => signOutToSpotify()}
-                >
-                  Logout
-                </button>
+                <span className="text-sm">{user.fullName}</span>
+                <SignOutButton /> 
               </div>
             ) : (
-              <button
-                className="px-4 py-2 rounded-md bg-green-500 text-white hover:bg-green-600 text-sm font-medium"
-                onClick={() => signInToSpotify() }
-              >
-                Login with Spotify
-              </button>
+              <SignInButton />
             )}
           </div>
           <div className="-mr-2 flex items-center sm:hidden">
@@ -128,14 +119,14 @@ export default function Navbar() {
           </Link>
         </div>
         <div className="pt-4 pb-3 border-t border-gray-200 dark:border-gray-700">
-          {session ? (
+          {user ? (
             <div className="px-4 py-3">
               <div className="flex items-center">
-                {session.user?.image && (
+                {user.imageUrl && (
                   <div className="flex-shrink-0">
                     <Image
-                      src={session.user.image}
-                      alt={session.user.name || "User"}
+                      src={user.imageUrl}
+                      alt={user.fullName || "User"}
                       width={40}
                       height={40}
                       className="rounded-full"
@@ -143,27 +134,19 @@ export default function Navbar() {
                   </div>
                 )}
                 <div className="ml-3">
-                  <div className="text-base font-medium text-gray-800 dark:text-white">{session.user?.name}</div>
-                  <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{session.user?.email}</div>
+                  <div className="text-base font-medium text-gray-800 dark:text-white">{user.fullName}</div>
+                  {user.primaryEmailAddress && (
+                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{user.primaryEmailAddress.emailAddress}</div>
+                  )}
                 </div>
               </div>
               <div className="mt-3">
-                <button
-                  className="mt-3 w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700"
-                  onClick={() => signOutToSpotify()}
-                >
-                  Logout
-                </button>
+                <SignOutButton />
               </div>
             </div>
           ) : (
             <div className="px-4 py-3">
-              <button
-                className="w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-500 hover:bg-green-600"
-                onClick={() => signInToSpotify()}
-              >
-                Login with Spotify
-              </button>
+              <SignInButton />
             </div>
           )}
         </div>

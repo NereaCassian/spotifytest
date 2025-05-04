@@ -1,8 +1,8 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
+import { useAuth, useUser} from '@clerk/nextjs';
 
 interface RecommendedTrack {
   name: string;
@@ -58,7 +58,8 @@ interface ApiResponse {
 }
 
 export default function RecommendationsPage() {
-  const { data: session, status } = useSession();
+  const { isSignedIn } = useAuth()
+  const { user } = useUser()
   const [patterns, setPatterns] = useState<string[]>([]);
   const [recommendedArtists, setRecommendedArtists] = useState<RecommendedArtist[]>([]);
   const [recommendedAlbums, setRecommendedAlbums] = useState<RecommendedAlbum[]>([]);
@@ -70,13 +71,13 @@ export default function RecommendationsPage() {
   const [activeTab, setActiveTab] = useState<'tracks' | 'artists' | 'albums'>('tracks');
 
   useEffect(() => {
-    if (session?.accessToken) {
+    if (user?.id) {
       fetchRecommendations();
     }
-  }, [session]);
+  }, [user]);
 
   const fetchRecommendations = async (regenerate = false) => {
-    if (!session?.accessToken) return;
+    if (!user?.id) return;
     
     try {
       setIsLoading(true);
@@ -112,7 +113,7 @@ export default function RecommendationsPage() {
     fetchRecommendations(true);
   };
 
-  if (status === 'loading' || isLoading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[70vh]">
         <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-green-500"></div>
@@ -120,7 +121,7 @@ export default function RecommendationsPage() {
     );
   }
 
-  if (!session) {
+  if (!isSignedIn) {
     return (
       <div className="flex flex-col items-center justify-center py-20 min-h-[70vh]">
         <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md max-w-md mx-auto text-center">

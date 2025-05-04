@@ -1,18 +1,20 @@
-import { getRecentlyPlayed } from "@/lib/spotify";
+import { getRecentlyPlayed, getSpotifyToken } from "@/lib/spotify";
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth } from '@clerk/nextjs/server'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session || !session.accessToken) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    const { userId } = await auth()
+    if (!userId) {
+      return new Response('Unauthorized', { status: 401 })
     }
+    
+    const token = await getSpotifyToken(userId);
 
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "20", 10);
 
-    const recentTracks = await getRecentlyPlayed(session.accessToken, limit);
+    const recentTracks = await getRecentlyPlayed(token, limit)
     
     return NextResponse.json({
       tracks: recentTracks.map((item: any) => ({

@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
+import { TimeRange } from '@/types/spotify';
 
 interface TimeRangeOption {
-  value: string;
+  value: TimeRange;
   label: string;
 }
 
@@ -11,7 +12,7 @@ interface StatsGridProps {
   title: string;
   children: React.ReactNode;
   timeRangeOptions?: TimeRangeOption[];
-  onTimeRangeChange?: (timeRange: string) => void;
+  onTimeRangeChange?: (timeRange: TimeRange) => void;
   isLoading?: boolean;
 }
 
@@ -22,11 +23,11 @@ export default function StatsGrid({
   onTimeRangeChange,
   isLoading = false,
 }: StatsGridProps) {
-  const [selectedTimeRange, setSelectedTimeRange] = useState<string>(
+  const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>(
     timeRangeOptions?.[0]?.value || 'medium_term'
   );
 
-  const handleTimeRangeChange = (timeRange: string) => {
+  const handleTimeRangeChange = (timeRange: TimeRange) => {
     setSelectedTimeRange(timeRange);
     onTimeRangeChange?.(timeRange);
   };
