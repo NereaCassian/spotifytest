@@ -10,11 +10,21 @@ export async function GET(request: NextRequest) {
       return new Response('Unauthorized', { status: 401 })
     }
     
-    const token = await getSpotifyToken(userId);
-
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "20", 10);
-
+    
+    // Check KV for cached data
+    const { env } = getCloudflareContext();
+    const key = `user:${userId}:recently-played:${limit}`;
+    const cachedData = await env.playlister.get(key);
+    
+    if (cachedData) {
+      // Return cached data if available
+      return NextResponse.json({ tracks: JSON.parse(cachedData) });
+    }
+    
+    // If no cached data, fetch from Spotify API
+    const token = await getSpotifyToken(userId);
     const recentTracks = await getRecentlyPlayed(token, limit)
     
     const tracks = recentTracks.map((item: any) => ({
@@ -29,8 +39,6 @@ export async function GET(request: NextRequest) {
     }));
     
     // Store in KV
-    const { env } = getCloudflareContext();
-    const key = `user:${userId}:recently-played:${limit}`;
     await env.playlister.put(key, JSON.stringify(tracks), { expirationTtl: 3600 }); // Cache for 1 hour
     
     return NextResponse.json({ tracks });

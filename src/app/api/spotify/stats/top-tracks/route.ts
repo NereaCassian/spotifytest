@@ -10,8 +10,7 @@ export async function GET(request: NextRequest) {
     if (!userId) {
       return new Response('Unauthorized', { status: 401 })
     }
-    const token = await getSpotifyToken(userId);
-
+    
     const { searchParams } = new URL(request.url);
     const timeRange = searchParams.get("time_range") || "medium_term";
     const limit = parseInt(searchParams.get("limit") || "10", 10);
@@ -19,7 +18,19 @@ export async function GET(request: NextRequest) {
     const validTimeRange = timeRange === 'short_term' || timeRange === 'medium_term' || timeRange === 'long_term' 
       ? timeRange 
       : 'medium_term';
-
+      
+    // Check KV for cached data
+    const { env } = getCloudflareContext();
+    const key = `user:${userId}:top-tracks:${validTimeRange}:${limit}`;
+    const cachedData = await env.playlister.get(key);
+    
+    if (cachedData) {
+      // Return cached data if available
+      return NextResponse.json({ tracks: JSON.parse(cachedData) });
+    }
+    
+    // If no cached data, fetch from Spotify API
+    const token = await getSpotifyToken(userId);
     const topTracks = await getTopTracks(token, validTimeRange, limit);
     
     const tracks = topTracks.map((track: any) => ({
@@ -35,8 +46,6 @@ export async function GET(request: NextRequest) {
     }));
     
     // Store in KV
-    const { env } = getCloudflareContext();
-    const key = `user:${userId}:top-tracks:${validTimeRange}:${limit}`;
     await env.playlister.put(key, JSON.stringify(tracks), { expirationTtl: 3600 }); // Cache for 1 hour
     
     return NextResponse.json({ tracks });

@@ -9,8 +9,19 @@ export async function GET(request: NextRequest) {
     if (!userId) {
       return new Response('Unauthorized', { status: 401 })
     }
-    const token = await getSpotifyToken(userId);
     
+    // Check KV for cached data
+    const { env } = getCloudflareContext();
+    const key = `user:${userId}:playlists`;
+    const cachedData = await env.playlister.get(key);
+    
+    if (cachedData) {
+      // Return cached data if available
+      return NextResponse.json({ playlists: JSON.parse(cachedData) });
+    }
+    
+    // If no cached data, fetch from Spotify API
+    const token = await getSpotifyToken(userId);
     const playlists = await getUserPlaylists(token);
     
     const formattedPlaylists = playlists.map((playlist: any) => ({
@@ -25,8 +36,6 @@ export async function GET(request: NextRequest) {
     }));
     
     // Store in KV
-    const { env } = getCloudflareContext();
-    const key = `user:${userId}:playlists`;
     await env.playlister.put(key, JSON.stringify(formattedPlaylists), { expirationTtl: 3600 }); // Cache for 1 hour
     
     return NextResponse.json({ playlists: formattedPlaylists });

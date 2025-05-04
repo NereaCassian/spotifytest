@@ -13,6 +13,18 @@ export async function GET(request: NextRequest) {
     if (!userId) {
       return new Response('Unauthorized', { status: 401 });
     }
+    
+    // Check KV for cached data
+    const { env } = getCloudflareContext();
+    const key = `user:${userId}:recommendations`;
+    const cachedData = await env.playlister.get(key);
+    
+    if (cachedData) {
+      // Return cached data if available
+      return NextResponse.json(JSON.parse(cachedData));
+    }
+    
+    // If no cached data, generate new recommendations
     const url = new URL(request.url);
     const token = await getSpotifyToken(userId);
     const [topTracks, topArtists] = await Promise.all([
@@ -106,8 +118,6 @@ export async function GET(request: NextRequest) {
     };
     
     // Store in KV
-    const { env } = getCloudflareContext();
-    const key = `user:${userId}:recommendations`;
     await env.playlister.put(key, JSON.stringify(results), { expirationTtl: 86400 }); // Cache for 24 hours
       
     return NextResponse.json(results);
