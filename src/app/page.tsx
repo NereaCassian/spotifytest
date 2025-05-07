@@ -10,7 +10,7 @@ export default function Home() {
         </h1>
         
         <p className="mt-6 text-lg sm:text-xl text-gray-600 dark:text-gray-300">
-          Discover your listening habits, convert playlists to YouTube, and get AI-powered music recommendations based on your taste.
+          Discover your listening habits, and get AI-powered music recommendations based on your taste.
         </p>
         
         <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">

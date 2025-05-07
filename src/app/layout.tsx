@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Spotify Stats & Converter",
-  description: "View your Spotify stats and convert playlists to YouTube",
+  description: "View your Spotify stats and get AI recommendations",
 };
 
 export default function RootLayout({
